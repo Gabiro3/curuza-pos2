@@ -1,196 +1,190 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
-import { Product } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, TrendingUp, DollarSign, Package, Clock } from 'lucide-react';
-import { ProductHistory } from '@/components/products/product-history';
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import { supabase } from "@/lib/supabase"
+import type { Product } from "@/types"
+import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ArrowLeft, TrendingUp, DollarSign, Package, Receipt } from "lucide-react"
+import { ProductHistory } from "@/components/products/product-history"
 
 interface ProductMetric {
-    totalSales: number;
-    totalUnits: number;
-    totalRevenue: number;
-    totalProfit: number;
-    averageSalePrice: number;
-    profitMargin: number;
-    stockTurnoverRate: number;
-    daysWithoutStock: number;
-    averageTimeToSell: number;
-    lastStockIn: string | null;
-    lastStockOut: string | null;
+    totalSales: number
+    totalUnits: number
+    totalRevenue: number
+    totalProfit: number
+    averageSalePrice: number
+    profitMargin: number
+    stockTurnoverRate: number
+    daysWithoutStock: number
+    averageTimeToSell: number
+    lastStockIn: string | null
+    lastStockOut: string | null
+    totalAdditionalCosts: number
     highestSaleDay: {
-        date: string | null;
-        units: number;
-        revenue: number;
-    };
+        date: string | null
+        units: number
+        revenue: number
+    }
     monthlyBreakdown: {
-        month: string;
-        units: number;
-        revenue: number;
-    }[];
+        month: string
+        units: number
+        revenue: number
+    }[]
 }
 
 export default function ProductMetricsPage() {
-    const { productId } = useParams<{ productId: string }>();
-    const [product, setProduct] = useState<Product | null>(null);
-    const [metrics, setMetrics] = useState<ProductMetric | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('overview');
-    const { toast } = useToast();
-    const navigate = useNavigate();
+    const { productId } = useParams<{ productId: string }>()
+    const [product, setProduct] = useState<Product | null>(null)
+    const [metrics, setMetrics] = useState<ProductMetric | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [activeTab, setActiveTab] = useState("overview")
+    const { toast } = useToast()
+    const navigate = useNavigate()
 
     useEffect(() => {
-        if (!productId) return;
-        fetchProductAndMetrics(productId);
-    }, [productId]);
+        if (!productId) return
+        fetchProductAndMetrics(productId)
+    }, [productId])
 
     const fetchProductAndMetrics = async (id: string) => {
-        setLoading(true);
+        setLoading(true)
         try {
             // Fetch product details
             const { data: productData, error: productError } = await supabase
-                .from('products')
-                .select('*')
-                .eq('id', id)
-                .single();
+                .from("products")
+                .select("*")
+                .eq("id", id)
+                .single()
 
-            if (productError) throw productError;
-            setProduct(productData);
+            if (productError) throw productError
+            setProduct(productData)
 
             // Fetch sales data for metrics
             const { data: salesData, error: salesError } = await supabase
-                .from('sale_items')
+                .from("sale_items")
                 .select(`
           *,
           sales:sale_id (id, customer_name, sale_date, total_amount, payment_method)
         `)
-                .eq('product_id', id)
-                .order('created_at', { ascending: false });
+                .eq("product_id", id)
+                .order("created_at", { ascending: false })
 
-            if (salesError) throw salesError;
+            if (salesError) throw salesError
 
             // Fetch inventory transactions
             const { data: transactionsData, error: transactionsError } = await supabase
-                .from('inventory_transactions')
-                .select('*')
-                .eq('product_id', id)
-                .order('transaction_date', { ascending: false });
+                .from("inventory_transactions")
+                .select("*")
+                .eq("product_id", id)
+                .order("transaction_date", { ascending: false })
 
-            if (transactionsError) throw transactionsError;
+            if (transactionsError) throw transactionsError
 
             // Calculate metrics
-            const calculatedMetrics = calculateMetrics(productData, salesData || [], transactionsData || []);
-            setMetrics(calculatedMetrics);
+            const calculatedMetrics = calculateMetrics(productData, salesData || [], transactionsData || [])
+            setMetrics(calculatedMetrics)
         } catch (error) {
-            console.error('Error fetching product metrics:', error);
+            console.error("Error fetching product metrics:", error)
             toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to load product metrics.',
-            });
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to load product metrics.",
+            })
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const calculateMetrics = (product: Product, sales: any[], transactions: any[]): ProductMetric => {
         // Basic metrics
-        const totalUnits = sales.reduce((sum, item) => sum + item.quantity, 0);
-        const totalRevenue = sales.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const totalCost = sales.reduce((sum, item) => sum + (product.purchase_price * item.quantity), 0);
-        const totalProfit = totalRevenue - totalCost;
+        const totalUnits = sales.reduce((sum, item) => sum + item.quantity, 0)
+        const totalRevenue = sales.reduce((sum, item) => sum + item.price * item.quantity, 0)
+        const totalCost = sales.reduce((sum, item) => sum + product.purchase_price * item.quantity, 0)
+        const totalProfit = totalRevenue - totalCost
+
+        // Calculate total additional costs
+        const totalAdditionalCosts = product.additional_costs
+            ? product.additional_costs.reduce((sum: number, cost: any) => sum + (cost.price || 0), 0)
+            : 0
 
         // Sales metrics
-        const averageSalePrice = totalUnits > 0 ? totalRevenue / totalUnits : 0;
-        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+        const averageSalePrice = totalUnits > 0 ? totalRevenue / totalUnits : 0
+        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
 
         // Stock metrics
-        const stockIns = transactions.filter(t => t.transaction_type === 'in');
-        const stockOuts = transactions.filter(t => t.transaction_type === 'out');
-        const totalStockIn = stockIns.reduce((sum, t) => sum + t.quantity, 0);
+        const stockIns = transactions.filter((t) => t.transaction_type === "in")
+        const stockOuts = transactions.filter((t) => t.transaction_type === "out")
+        const totalStockIn = stockIns.reduce((sum, t) => sum + t.quantity, 0)
 
         // Stock turnover rate (approximate - total units sold / average inventory)
-        const stockTurnoverRate = totalStockIn > 0 ? totalUnits / ((totalStockIn + product.current_stock) / 2) : 0;
+        const stockTurnoverRate = totalStockIn > 0 ? totalUnits / ((totalStockIn + product.current_stock) / 2) : 0
 
         // Last stock movements
-        const lastStockIn = stockIns.length > 0 ? stockIns[0].transaction_date : null;
-        const lastStockOut = stockOuts.length > 0 ? stockOuts[0].transaction_date : null;
+        const lastStockIn = stockIns.length > 0 ? stockIns[0].transaction_date : null
+        const lastStockOut = stockOuts.length > 0 ? stockOuts[0].transaction_date : null
 
         // Days without stock - would need more detailed historical data
-        const daysWithoutStock = 0; // Placeholder
+        const daysWithoutStock = 0 // Placeholder
 
         // Average time to sell - would need more detailed historical data
-        const averageTimeToSell = 0; // Placeholder
+        const averageTimeToSell = 0 // Placeholder
 
         // Highest sale day
         let highestSaleDay = {
             date: null,
             units: 0,
-            revenue: 0
-        };
+            revenue: 0,
+        }
 
-        const salesByDate = sales.reduce((acc: Record<string, { units: number, revenue: number }>, sale) => {
-            const date = sale.sales.sale_date.split('T')[0];
+        const salesByDate = sales.reduce((acc: Record<string, { units: number; revenue: number }>, sale) => {
+            const date = sale.sales.sale_date.split("T")[0]
             if (!acc[date]) {
-                acc[date] = { units: 0, revenue: 0 };
+                acc[date] = { units: 0, revenue: 0 }
             }
-            acc[date].units += sale.quantity;
-            acc[date].revenue += sale.price * sale.quantity;
-            return acc;
-        }, {});
+            acc[date].units += sale.quantity
+            acc[date].revenue += sale.price * sale.quantity
+            return acc
+        }, {})
 
         Object.entries(salesByDate).forEach(([date, data]) => {
-            const dayData = data as { units: number; revenue: number };
+            const dayData = data as { units: number; revenue: number }
             if (!highestSaleDay.date || (dayData as { revenue: number }).revenue > highestSaleDay.revenue) {
                 highestSaleDay = {
                     date,
                     units: (dayData as { units: number }).units,
-                    revenue: (dayData as { revenue: number }).revenue
-                };
+                    revenue: (dayData as { revenue: number }).revenue,
+                }
             }
-        });
+        })
 
         // Monthly breakdown
-        const monthlyData = sales.reduce((acc: Record<string, { units: number, revenue: number }>, sale) => {
-            const date = new Date(sale.sales.sale_date);
-            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthlyData = sales.reduce((acc: Record<string, { units: number; revenue: number }>, sale) => {
+            const date = new Date(sale.sales.sale_date)
+            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
 
             if (!acc[monthYear]) {
-                acc[monthYear] = { units: 0, revenue: 0 };
+                acc[monthYear] = { units: 0, revenue: 0 }
             }
 
-            acc[monthYear].units += sale.quantity;
-            acc[monthYear].revenue += sale.price * sale.quantity;
+            acc[monthYear].units += sale.quantity
+            acc[monthYear].revenue += sale.price * sale.quantity
 
-            return acc;
-        }, {});
+            return acc
+        }, {})
 
         const monthlyBreakdown = Object.entries(monthlyData)
             .map(([month, data]: [string, { units: number; revenue: number }]) => ({
                 month,
                 units: data.units,
-                revenue: data.revenue
+                revenue: data.revenue,
             }))
-            .sort((a, b) => a.month.localeCompare(b.month));
+            .sort((a, b) => a.month.localeCompare(b.month))
 
         return {
             totalSales: sales.length,
@@ -204,34 +198,35 @@ export default function ProductMetricsPage() {
             averageTimeToSell,
             lastStockIn,
             lastStockOut,
+            totalAdditionalCosts,
             highestSaleDay,
-            monthlyBreakdown
-        };
-    };
+            monthlyBreakdown,
+        }
+    }
 
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'RWF',
-        }).format(value);
-    };
+        return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "RWF",
+        }).format(value)
+    }
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
+        if (!dateString) return "N/A"
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        })
+    }
 
     const formatMonth = (monthYear: string) => {
-        const [year, month] = monthYear.split('-');
-        return new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', {
-            month: 'long',
-            year: 'numeric'
-        });
-    };
+        const [year, month] = monthYear.split("-")
+        return new Date(Number.parseInt(year), Number.parseInt(month) - 1).toLocaleString("default", {
+            month: "long",
+            year: "numeric",
+        })
+    }
 
     if (loading) {
         return (
@@ -249,7 +244,7 @@ export default function ProductMetricsPage() {
                 </div>
                 <Skeleton className="h-64 w-full" />
             </div>
-        );
+        )
     }
 
     if (!product || !metrics) {
@@ -263,7 +258,7 @@ export default function ProductMetricsPage() {
                 </div>
                 <p>The product you're looking for doesn't exist or has been removed.</p>
             </div>
-        );
+        )
     }
 
     return (
@@ -283,51 +278,35 @@ export default function ProductMetricsPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Total Revenue
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(metrics.totalRevenue)}
-                            </div>
+                            <div className="text-2xl font-bold">{formatCurrency(metrics.totalRevenue)}</div>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            From {metrics.totalUnits} units sold
-                        </p>
+                        <p className="text-xs text-muted-foreground">From {metrics.totalUnits} units sold</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Profit
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Profit</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(metrics.totalProfit)}
-                            </div>
+                            <div className="text-2xl font-bold">{formatCurrency(metrics.totalProfit)}</div>
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Margin: {metrics.profitMargin.toFixed(2)}%
-                        </p>
+                        <p className="text-xs text-muted-foreground">Margin: {metrics.profitMargin.toFixed(2)}%</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Current Stock
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Current Stock</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold">
-                                {product.current_stock}
-                            </div>
+                            <div className="text-2xl font-bold">{product.current_stock}</div>
                             <Package className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -337,20 +316,14 @@ export default function ProductMetricsPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Stock Turnover
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Additional Costs</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-between">
-                            <div className="text-2xl font-bold">
-                                {metrics.stockTurnoverRate.toFixed(2)}
-                            </div>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <div className="text-2xl font-bold">{formatCurrency(metrics.totalAdditionalCosts)}</div>
+                            <Receipt className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Last restock: {formatDate(metrics.lastStockIn)}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{product.additional_costs?.length || 0} cost items</p>
                     </CardContent>
                 </Card>
             </div>
@@ -358,9 +331,11 @@ export default function ProductMetricsPage() {
             <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-4">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="costs">Cost Breakdown</TabsTrigger>
                     <TabsTrigger value="history">Product History</TabsTrigger>
                     <TabsTrigger value="monthly">Monthly Analysis</TabsTrigger>
                 </TabsList>
+
                 <TabsContent value="overview">
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card>
@@ -414,24 +389,122 @@ export default function ProductMetricsPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm text-muted-foreground">Average Sale Price</p>
-                                            <p className="text-lg font-medium">
-                                                {formatCurrency(metrics.averageSalePrice)}
-                                            </p>
+                                            <p className="text-lg font-medium">{formatCurrency(metrics.averageSalePrice)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-sm text-muted-foreground">Best Sales Day</p>
-                                            <p className="text-lg font-medium">
-                                                {metrics.highestSaleDay.date ? formatDate(metrics.highestSaleDay.date) : 'N/A'}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {metrics.highestSaleDay.units} units, {formatCurrency(metrics.highestSaleDay.revenue)}
-                                            </p>
+                                            <p className="text-sm text-muted-foreground">Stock Turnover</p>
+                                            <p className="text-lg font-medium">{metrics.stockTurnoverRate.toFixed(2)}</p>
                                         </div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="costs">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Cost Breakdown</CardTitle>
+                            <CardDescription>Detailed breakdown of all costs associated with this product</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                {/* Base Costs */}
+                                <div>
+                                    <h4 className="text-sm font-medium mb-3">Base Costs</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="p-4 border rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Purchase Price</p>
+                                            <p className="text-xl font-semibold">{formatCurrency(product.purchase_price)}</p>
+                                        </div>
+                                        <div className="p-4 border rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Sale Price</p>
+                                            <p className="text-xl font-semibold">{formatCurrency(product.sale_price)}</p>
+                                        </div>
+                                        <div className="p-4 border rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Base Profit</p>
+                                            <p className="text-xl font-semibold text-green-600">
+                                                {formatCurrency(product.sale_price - product.purchase_price)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Additional Costs */}
+                                <div>
+                                    <h4 className="text-sm font-medium mb-3">Additional Costs</h4>
+                                    {product.additional_costs && product.additional_costs.length > 0 ? (
+                                        <div className="space-y-3">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Cost Title</TableHead>
+                                                        <TableHead className="text-right">Amount</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {product.additional_costs.map((cost: any, index: number) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium">{cost.title}</TableCell>
+                                                            <TableCell className="text-right">{formatCurrency(cost.price)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                    <TableRow className="border-t-2">
+                                                        <TableCell className="font-semibold">Total Additional Costs</TableCell>
+                                                        <TableCell className="text-right font-semibold">
+                                                            {formatCurrency(metrics.totalAdditionalCosts)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                            <p>No additional costs defined for this product</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Total Cost Analysis */}
+                                <div className="border-t pt-6">
+                                    <h4 className="text-sm font-medium mb-3">Total Cost Analysis</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div className="p-4 bg-muted rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Total Cost per Unit</p>
+                                            <p className="text-lg font-semibold">
+                                                {formatCurrency(product.purchase_price + metrics.totalAdditionalCosts)}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 bg-muted rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Sale Price</p>
+                                            <p className="text-lg font-semibold">{formatCurrency(product.sale_price)}</p>
+                                        </div>
+                                        <div className="p-4 bg-muted rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Net Profit per Unit</p>
+                                            <p className="text-lg font-semibold text-green-600">
+                                                {formatCurrency(product.sale_price - product.purchase_price - metrics.totalAdditionalCosts)}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 bg-muted rounded-lg">
+                                            <p className="text-sm text-muted-foreground">Net Profit Margin</p>
+                                            <p className="text-lg font-semibold text-green-600">
+                                                {product.sale_price > 0
+                                                    ? (
+                                                        ((product.sale_price - product.purchase_price - metrics.totalAdditionalCosts) /
+                                                            product.sale_price) *
+                                                        100
+                                                    ).toFixed(2)
+                                                    : "0.00"}
+                                                %
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="history">
@@ -467,7 +540,8 @@ export default function ProductMetricsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {metrics.monthlyBreakdown.map((month, index) => {
-                                            const profit = month.units * (product.sale_price - product.purchase_price);
+                                            const profit =
+                                                month.units * (product.sale_price - product.purchase_price - metrics.totalAdditionalCosts)
                                             return (
                                                 <TableRow key={index}>
                                                     <TableCell>{formatMonth(month.month)}</TableCell>
@@ -475,7 +549,7 @@ export default function ProductMetricsPage() {
                                                     <TableCell>{formatCurrency(month.revenue)}</TableCell>
                                                     <TableCell>{formatCurrency(profit)}</TableCell>
                                                 </TableRow>
-                                            );
+                                            )
                                         })}
                                     </TableBody>
                                 </Table>
@@ -485,5 +559,5 @@ export default function ProductMetricsPage() {
                 </TabsContent>
             </Tabs>
         </div>
-    );
+    )
 }

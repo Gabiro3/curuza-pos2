@@ -7,9 +7,11 @@ import { DashboardStats, SalesByPeriod } from '@/types';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Package, CreditCard, TrendingUp, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     total_sales: 0,
     total_profit: 0,
@@ -27,7 +29,8 @@ export default function Dashboard() {
         // Fetch total products
         const { data: productsData, error: productsError } = await supabase
           .from('products')
-          .select('count');
+          .select('count')
+          .eq('created_by', user?.id);
 
         if (productsError) throw productsError;
 
@@ -35,6 +38,7 @@ export default function Dashboard() {
         const { data: lowStockData, error: lowStockError } = await supabase
           .from('products')
           .select('count')
+          .eq('created_by', user?.id)
           .lt('current_stock', 10);
 
         if (lowStockError) throw lowStockError;
@@ -42,7 +46,8 @@ export default function Dashboard() {
         // Fetch sales data
         const { data: salesData, error: salesError } = await supabase
           .from('sales')
-          .select('total_amount');
+          .select('total_amount')
+          .eq('created_by', user?.id);
 
         if (salesError) throw salesError;
 
@@ -85,7 +90,8 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('sales')
         .select('sale_date, total_amount')
-        .gte('sale_date', startDate.toISOString());
+        .gte('sale_date', startDate.toISOString())
+        .eq('created_by', user?.id);
 
       if (error) throw error;
 

@@ -53,11 +53,6 @@ const App = () => (
                 <Reports />
               </MainLayout>
             } />
-            <Route path="/inventory" element={
-              <MainLayout>
-                <InventoryPage />
-              </MainLayout>
-            } />
             <Route path="/product-metrics/:productId" element={
               <MainLayout>
                 <ProductMetricsPage />

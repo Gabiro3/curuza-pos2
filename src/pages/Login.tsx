@@ -4,7 +4,7 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,11 +54,10 @@ export default function LoginPage() {
         toast({
           variant: 'destructive',
           title: 'Login failed',
-          description: error,
         });
         return;
       }
-      
+
       toast({
         title: 'Welcome back!',
         description: 'You have been successfully logged in.',

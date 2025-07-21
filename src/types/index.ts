@@ -4,8 +4,14 @@ export interface Product {
   purchase_price: number;
   sale_price: number;
   current_stock: number;
+  additional_costs?: AdditionalCost[];
   created_at: string;
   updated_at: string;
+}
+
+export interface AdditionalCost {
+  title: string;
+  price: number;
 }
 
 export interface InventoryTransaction {
@@ -13,7 +19,7 @@ export interface InventoryTransaction {
   product_id: string;
   product?: Product;
   quantity: number;
-  transaction_type: 'in' | 'out';
+  transaction_type: "in" | "out";
   transaction_date: string;
   notes: string;
   created_by: string;
@@ -45,8 +51,8 @@ export interface Sale {
   sale_date: string;
   total_amount: number;
   discount_amount: number;
-  payment_method: 'cash' | 'card' | 'transfer' | 'other';
-  payment_status: 'paid' | 'pending' | 'partial';
+  payment_method: "cash" | "card" | "transfer" | "other";
+  payment_status: "paid" | "pending" | "partial";
   notes: string;
   created_by: string;
   created_at: string;

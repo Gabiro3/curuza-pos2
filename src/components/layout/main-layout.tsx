@@ -44,11 +44,6 @@ const sidebarItems: SidebarItem[] = [
     href: '/products',
   },
   {
-    title: 'Inventory',
-    icon: PackagePlus,
-    href: '/inventory',
-  },
-  {
     title: 'Purchase Planner',
     icon: FilePlus2Icon,
     href: '/purchase-planner',

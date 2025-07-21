@@ -471,15 +471,15 @@ export default function PurchasePlannerPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft':
-                return <Badge variant="outline">Draft</Badge>;
+                return <Badge variant="outline" className='ml-2'>Draft</Badge>;
             case 'scheduled':
-                return <Badge variant="secondary">Scheduled</Badge>;
+                return <Badge variant="secondary" className='ml-2'>Scheduled</Badge>;
             case 'completed':
-                return <Badge variant="default">Completed</Badge>;
+                return <Badge variant="default" className='ml-2'>Completed</Badge>;
             case 'cancelled':
-                return <Badge variant="destructive">Cancelled</Badge>;
+                return <Badge variant="destructive" className='ml-2'>Cancelled</Badge>;
             default:
-                return <Badge>{status}</Badge>;
+                return <Badge className='ml-2'>{status}</Badge>;
         }
     };
 

@@ -151,6 +151,7 @@ export default function SalesPage() {
       let query = supabase
         .from('sales')
         .select('*')
+        .eq('created_by', user?.id)
         .order('sale_date', { ascending: false });
 
       // Apply date filter if set
@@ -187,6 +188,7 @@ export default function SalesPage() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('created_by', user?.id)
         .order('name')
         .gt('current_stock', 0);
 
@@ -623,7 +625,6 @@ export default function SalesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sales History</CardTitle>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-grow">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import {
   Bar,
@@ -48,6 +49,7 @@ export default function ReportsPage() {
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (activeTab === 'sales') {
@@ -87,6 +89,7 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('sales')
         .select('sale_date, total_amount, payment_method, payment_status')
+        .eq('created_by', user?.id)
         .gte('sale_date', startDate.toISOString())
         .order('sale_date');
 
@@ -180,7 +183,8 @@ export default function ReportsPage() {
       // Fetch all products with their stock levels
       const { data: products, error: productsError } = await supabase
         .from('products')
-        .select('*');
+        .select('*')
+        .eq('created_by', user?.id);
 
       if (productsError) throw productsError;
 
@@ -219,6 +223,7 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('created_by', user?.id)
         .lt('current_stock', 10)
         .order('current_stock');
 

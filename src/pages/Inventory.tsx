@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
     Table,
     TableBody,
@@ -41,6 +41,7 @@ import { DatePickerWithRange } from '@/components/date-range-picker';
 import { CalendarIcon, Search, ArrowUpDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { useAuth } from '@/lib/auth-context';
 import { DateRange } from 'react-day-picker';
 
 interface InventoryTransaction {
@@ -66,6 +67,7 @@ export default function InventoryPage() {
     const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
     const [filteredTransactions, setFilteredTransactions] = useState<InventoryTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [transactionType, setTransactionType] = useState<string | undefined>(undefined);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -100,6 +102,7 @@ export default function InventoryPage() {
           ),
           users:created_by (email)
         `)
+                .eq('created_by', user?.id)
                 .order('transaction_date', { ascending: false });
 
             if (error) throw error;
