@@ -57,6 +57,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, addDays } from 'date-fns';
+import { AlertDialogHeader, AlertDialogFooter } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '@radix-ui/react-alert-dialog';
 
 interface PurchasePlan {
     id: string;
@@ -108,6 +110,7 @@ export default function PurchasePlannerPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isPlanFormDialogOpen, setIsPlanFormDialogOpen] = useState(false);
     const [isEditingPlan, setIsEditingPlan] = useState(false);
 
@@ -141,6 +144,7 @@ export default function PurchasePlannerPage() {
             const { data, error } = await supabase
                 .from('purchase_plans')
                 .select('*')
+                .eq('created_by', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -162,6 +166,7 @@ export default function PurchasePlannerPage() {
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
+                .eq('created_by', user.id)
                 .order('name');
 
             if (error) throw error;
@@ -269,6 +274,7 @@ export default function PurchasePlannerPage() {
                 product_id: data.product_id,
                 quantity: parseInt(data.quantity),
                 unit_price: parseFloat(data.unit_price),
+                created_by: user.id
             };
 
             const { error } = await supabase
@@ -278,15 +284,25 @@ export default function PurchasePlannerPage() {
             if (error) throw error;
 
             // Update the plan's total cost
-            const totalCost = planItems.reduce(
-                (sum, item) => sum + (item.quantity * item.unit_price),
-                parseInt(data.quantity) * parseFloat(data.unit_price)
-            );
+            const totalCost =
+                planItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0) +
+                parseInt(data.quantity) * parseFloat(data.unit_price);
+
 
             await supabase
                 .from('purchase_plans')
                 .update({ total_cost: totalCost })
                 .eq('id', currentPlan.id);
+            // Re-fetch the updated plan
+            const { data: updatedPlan } = await supabase
+                .from('purchase_plans')
+                .select('*')
+                .eq('id', currentPlan.id)
+                .single();
+
+            if (updatedPlan) {
+                setCurrentPlan(updatedPlan);
+            }
 
             toast({
                 title: 'Success',
@@ -439,6 +455,34 @@ export default function PurchasePlannerPage() {
             unit_price: '',
         });
         setIsDialogOpen(true);
+    };
+    const handleDeletePlan = async () => {
+        if (!currentPlan) return;
+
+        try {
+            const { error } = await supabase
+                .from('purchase_plans')
+                .delete()
+                .eq('id', currentPlan.id);
+
+            if (error) throw error;
+
+            toast({
+                title: 'Deleted',
+                description: 'Purchase plan deleted successfully',
+            });
+
+            setCurrentPlan(null);
+            fetchPlans();
+            setShowDeleteDialog(false);
+        } catch (error) {
+            console.error('Failed to delete purchase plan:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to delete the plan. Please try again.',
+            });
+        }
     };
 
     const handleProductSelection = (productId: string) => {
@@ -607,6 +651,14 @@ export default function PurchasePlannerPage() {
                                         </div>
                                     )}
                                 </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowDeleteDialog(true)}
+                                >
+                                    <Trash className="h-5 w-5 text-destructive" />
+                                </Button>
+
                             </CardHeader>
                             <CardContent>
                                 {currentPlan.notes && (
@@ -892,6 +944,25 @@ export default function PurchasePlannerPage() {
                     </Form>
                 </DialogContent>
             </Dialog>
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete this purchase plan?</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. All items within this plan will be permanently removed.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={handleDeletePlan}
+                        >
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }
