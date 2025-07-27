@@ -232,6 +232,7 @@ export default function ProductsPage() {
         sale_price: Number.parseFloat(data.sale_price),
         current_stock: Number.parseInt(data.current_stock),
         additional_costs: additionalCosts,
+        created_by: user?.id,
       }
 
       const { error } = await supabase.from("products").insert([newProduct])
