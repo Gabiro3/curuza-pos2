@@ -67,9 +67,6 @@ const productSchema = z.object({
   purchase_price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
     message: "Purchase price must be a positive number",
   }),
-  sale_price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Sale price must be a positive number",
-  }),
   current_stock: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
     message: "Stock quantity must be a non-negative number",
   }),
@@ -139,7 +136,6 @@ export default function ProductsPage() {
     defaultValues: {
       name: "",
       purchase_price: "",
-      sale_price: "",
       current_stock: "0",
       additional_costs: [],
     },
@@ -155,7 +151,6 @@ export default function ProductsPage() {
     defaultValues: {
       name: "",
       purchase_price: "",
-      sale_price: "",
       current_stock: "0",
       additional_costs: [],
     },
@@ -187,7 +182,6 @@ export default function ProductsPage() {
       editForm.reset({
         name: editingProduct.name,
         purchase_price: editingProduct.purchase_price.toString(),
-        sale_price: editingProduct.sale_price.toString(),
         current_stock: editingProduct.current_stock.toString(),
         additional_costs: editingProduct.additional_costs
           ? editingProduct.additional_costs.map(cost => ({
@@ -229,7 +223,6 @@ export default function ProductsPage() {
       const newProduct = {
         name: data.name,
         purchase_price: Number.parseFloat(data.purchase_price),
-        sale_price: Number.parseFloat(data.sale_price),
         current_stock: Number.parseInt(data.current_stock),
         additional_costs: additionalCosts,
         created_by: user?.id,
@@ -288,7 +281,6 @@ export default function ProductsPage() {
       const updatedProduct = {
         name: data.name,
         purchase_price: Number.parseFloat(data.purchase_price),
-        sale_price: Number.parseFloat(data.sale_price),
         current_stock: Number.parseInt(data.current_stock),
         additional_costs: additionalCosts,
       }
@@ -501,19 +493,6 @@ export default function ProductsPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="sale_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sale Price</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <FormField
                   control={form.control}
@@ -629,7 +608,6 @@ export default function ProductsPage() {
                     <TableRow>
                       <TableHead>Product Name</TableHead>
                       <TableHead className="hidden md:table-cell">Purchase Price</TableHead>
-                      <TableHead>Sale Price</TableHead>
                       <TableHead className="hidden lg:table-cell">Additional Costs</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -651,7 +629,6 @@ export default function ProductsPage() {
                           <TableCell className="hidden md:table-cell">
                             {formatCurrency(product.purchase_price)}
                           </TableCell>
-                          <TableCell>{formatCurrency(product.sale_price)}</TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {product.additional_costs && product.additional_costs.length > 0 ? (
                               <div className="space-y-1">
@@ -836,19 +813,6 @@ export default function ProductsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Purchase Price</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="sale_price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sale Price</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" placeholder="0.00" {...field} />
                       </FormControl>

@@ -76,3 +76,10 @@ export interface SalesByPeriod {
   total: number;
   profit: number;
 }
+
+export interface DailyStats {
+  date: string;
+  total_purchases: number;
+  total_sales: number;
+  total_profit: number;
+}
