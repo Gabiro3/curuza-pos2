@@ -47,6 +47,7 @@ export default function Dashboard() {
         product_name: string
         amount: number
         quantity: number
+        profit: number
         created_at: string
       }>
     }>
@@ -113,11 +114,11 @@ export default function Dashboard() {
 
   const fetchSalesByPeriod = async (selectedPeriod: "week" | "month") => {
     try {
-      const days = selectedPeriod === "week" ? 7 : 30
-      const startDate = new Date()
-      startDate.setDate(startDate.getDate() - days)
+      const days = selectedPeriod === "week" ? 7 : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
 
-      // Fetch sales data with product details
+      // Fetch sales data with sale items, including the profit for each sale item
       const { data: salesData, error: salesError } = await supabase
         .from("sales")
         .select(`
@@ -127,17 +128,18 @@ export default function Dashboard() {
         sale_items (
           quantity,
           price,
+          profit,
           products (
             name
           )
         )
       `)
         .gte("sale_date", startDate.toISOString())
-        .eq("created_by", user?.id)
+        .eq("created_by", user?.id);
 
-      if (salesError) throw salesError
+      if (salesError) throw salesError;
 
-      // Fetch purchase data (assuming you have a purchases table)
+      // Fetch purchase data
       const { data: purchasesData, error: purchasesError } = await supabase
         .from("purchases")
         .select(`
@@ -153,74 +155,82 @@ export default function Dashboard() {
         )
       `)
         .gte("purchase_date", startDate.toISOString())
-        .eq("created_by", user?.id)
+        .eq("created_by", user?.id);
 
-      // Process data for chart and daily stats
-      const salesByDay: Record<string, { total: number; profit: number }> = {}
+      if (purchasesError) throw purchasesError;
+
+      // Initialize salesByDay and dailyStatsMap
+      const salesByDay: Record<string, { total: number; profit: number }> = {};
       const dailyStatsMap: Record<
         string,
         {
-          date: string
-          purchases: number
-          sales: number
-          profit: number
+          date: string;
+          purchases: number;
+          sales: number;
+          profit: number;
           transactions: Array<{
-            id: string
-            type: "purchase" | "sale"
-            product_name: string
-            amount: number
-            quantity: number
-            created_at: string
-          }>
+            id: string;
+            type: "purchase" | "sale";
+            product_name: string;
+            amount: number;
+            quantity: number;
+            profit: number; // Added the profit field here for each item
+            created_at: string;
+          }>;
         }
-      > = {}
+      > = {};
 
       // Initialize all days in the range with zero values
       for (let i = 0; i <= days; i++) {
-        const date = new Date()
-        date.setDate(date.getDate() - (days - i))
-        const formattedDate = date.toISOString().split("T")[0]
-        salesByDay[formattedDate] = { total: 0, profit: 0 }
+        const date = new Date();
+        date.setDate(date.getDate() - (days - i));
+        const formattedDate = date.toISOString().split("T")[0];
+        salesByDay[formattedDate] = { total: 0, profit: 0 };
         dailyStatsMap[formattedDate] = {
           date: formattedDate,
           purchases: 0,
           sales: 0,
           profit: 0,
           transactions: [],
-        }
+        };
       }
 
       // Process sales data
       salesData?.forEach((sale) => {
-        const date = new Date(sale.sale_date).toISOString().split("T")[0]
+        const date = new Date(sale.sale_date).toISOString().split("T")[0];
         if (salesByDay[date]) {
-          const saleAmount = Number.parseFloat(sale.total_amount)
-          salesByDay[date].total += saleAmount
-          salesByDay[date].profit += saleAmount * 0.3 // 30% profit margin
+          const saleAmount = Number.parseFloat(sale.total_amount);
+          let totalProfitForSale = 0;
 
-          dailyStatsMap[date].sales += saleAmount
-          dailyStatsMap[date].profit += saleAmount * 0.3
-
-          // Add sale transactions
+          // Sum up the profits for each sale item and push the items with profit into the transactions array
           sale.sale_items?.forEach((item) => {
+            totalProfitForSale += item.profit || 0; // Sum the profit of each item
             dailyStatsMap[date].transactions.push({
               id: sale.id,
               type: "sale",
               product_name: item.products['name'] || "Unknown Product",
               amount: item.price * item.quantity,
               quantity: item.quantity,
+              profit: item.profit || 0, // Include item profit
               created_at: sale.sale_date,
-            })
-          })
+            });
+          });
+
+          // Add the total profit of the sale to the day
+          salesByDay[date].total += saleAmount;
+          salesByDay[date].profit += totalProfitForSale;
+
+          dailyStatsMap[date].sales += saleAmount;
+          dailyStatsMap[date].profit += totalProfitForSale;
         }
-      })
+      });
 
       // Process purchases data
       purchasesData?.forEach((purchase) => {
-        const date = new Date(purchase.purchase_date).toISOString().split("T")[0]
+        const date = new Date(purchase.purchase_date).toISOString().split("T")[0];
         if (dailyStatsMap[date]) {
-          const purchaseAmount = Number.parseFloat(purchase.total_amount)
-          dailyStatsMap[date].purchases += purchaseAmount
+          const purchaseAmount = Number.parseFloat(purchase.total_amount);
+          dailyStatsMap[date].purchases += purchaseAmount;
 
           // Add purchase transactions
           purchase.purchase_items?.forEach((item) => {
@@ -230,36 +240,39 @@ export default function Dashboard() {
               product_name: item.products['name'] || "Unknown Product",
               amount: item.unit_price * item.quantity,
               quantity: item.quantity,
+              profit: 0, // Purchases have no profit, set to 0
               created_at: purchase.purchase_date,
-            })
-          })
+            });
+          });
         }
-      })
+      });
 
       // Convert to array format for chart
       const chartData = Object.entries(salesByDay).map(([date, values]) => ({
         date,
         total: values.total,
         profit: values.profit,
-      }))
+      }));
 
       // Convert daily stats to array and sort by date
       const dailyStatsArray = Object.values(dailyStatsMap).sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )
+      );
 
-      setChartData(chartData)
-      setDailyStats(dailyStatsArray)
-      setPeriod(selectedPeriod)
+      setChartData(chartData);
+      setDailyStats(dailyStatsArray);
+      setPeriod(selectedPeriod);
     } catch (error) {
-      console.error("Error fetching sales by period:", error)
+      console.error("Error fetching sales by period:", error);
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to fetch sales chart data.",
-      })
+      });
     }
-  }
+  };
+
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -365,6 +378,7 @@ export default function Dashboard() {
                       <TableHead>Type</TableHead>
                       <TableHead>Product</TableHead>
                       <TableHead>Quantity</TableHead>
+                      <TableHead>Profit</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Time</TableHead>
                     </TableRow>
@@ -387,6 +401,9 @@ export default function Dashboard() {
                         </TableCell>
                         <TableCell className="font-medium">{transaction.product_name}</TableCell>
                         <TableCell>{transaction.quantity}</TableCell>
+                        <TableCell>
+                          {formatCurrency(transaction.profit)}
+                        </TableCell>
                         <TableCell>{formatCurrency(transaction.amount)}</TableCell>
                         <TableCell>
                           {new Date(transaction.created_at).toLocaleTimeString("en-US", {

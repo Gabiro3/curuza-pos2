@@ -83,6 +83,9 @@ const saleItemSchema = z.object({
   price: z.number().positive({
     message: "Price must be a positive number",
   }),
+  profit: z.number().positive({
+    message: "Profit must be a positive number",
+  }),
   quantity: z.number().int().positive({
     message: "Quantity must be a positive integer",
   }),
@@ -262,6 +265,7 @@ export default function SalesPage() {
         product_id: item.product_id,
         quantity: item.quantity,
         price: item.price,
+        profit: item.profit || 0, // Assuming profit is part of the item
         discount: item.discount || 0,
       }));
 
@@ -302,7 +306,7 @@ export default function SalesPage() {
 
       form.reset({
         customer_name: '',
-        items: [{ product_id: '', price: 0, quantity: 1, discount: 0 }],
+        items: [{ product_id: '', price: 0, quantity: 1, discount: 0, profit: 0 }],
         payment_method: 'cash',
         payment_status: 'paid',
         notes: '',
@@ -502,6 +506,26 @@ export default function SalesPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Discount Amount</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min={0}
+                                  {...field}
+                                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.profit`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Profit Amount</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"

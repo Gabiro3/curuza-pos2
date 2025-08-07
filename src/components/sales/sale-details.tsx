@@ -18,6 +18,7 @@ interface SaleItem {
   product_id: string;
   quantity: number;
   price: number;
+  profit: number; // Assuming profit is part of the item
   discount: number;
   products: {
     name: string;
@@ -182,6 +183,7 @@ export function SaleDetails({ saleId }: SaleDetailsProps) {
                 <TableHead>Product</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Profit</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
                 <TableHead className="text-right">Total</TableHead>
               </TableRow>
@@ -192,6 +194,7 @@ export function SaleDetails({ saleId }: SaleDetailsProps) {
                   <TableCell>{item.products.name}</TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
                   <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.profit)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(item.discount)}</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(calculateItemTotal(item.price, item.quantity, item.discount))}
