@@ -68,10 +68,7 @@ export function ProductHistory({ productId }: { productId: string | null }) {
                 // Fetch inventory transactions
                 const { data: transactionsData, error: transactionsError } = await supabase
                     .from('inventory_transactions')
-                    .select(`
-            *,
-            users:created_by (email)
-          `)
+                    .select(`*`)
                     .eq('product_id', productId)
                     .order('transaction_date', { ascending: false });
 

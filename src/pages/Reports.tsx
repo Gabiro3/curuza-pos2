@@ -217,6 +217,11 @@ export default function ReportsPage() {
     }
   };
 
+  const chartData = topProducts.slice(0, 5).map(p => ({
+    name: p.product_name,
+    quantity: p.total_quantity_sold
+  }));
+
   const fetchLowStockProducts = async () => {
     try {
       // Fetch products with low stock (less than 10)
@@ -355,17 +360,16 @@ export default function ReportsPage() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topProducts.slice(0, 5)}>
+                    <BarChart data={chartData.slice(0, 5)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
+                      <Bar dataKey="quantity" name="Units Sold" fill="#2563eb" />
                       <YAxis />
                       <Tooltip
                         formatter={(value: number) => [value]}
                         labelFormatter={(name) => `Product: ${name}`}
                       />
                       <Legend />
-                      <Bar dataKey="quantity" name="Units Sold" fill="#2563eb" />
-                      <Bar dataKey="revenue" name="Revenue" fill="#16a34a" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

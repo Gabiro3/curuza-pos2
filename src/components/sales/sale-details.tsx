@@ -59,10 +59,7 @@ export function SaleDetails({ saleId }: SaleDetailsProps) {
         // Fetch sale details
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
-          .select(`
-            *,
-            users:created_by (email)
-          `)
+          .select(`*`)
           .eq('id', saleId)
           .single();
 
