@@ -161,7 +161,8 @@ export default function ReportsPage() {
 
       // Fetch top selling products
       const { data, error } = await supabase.rpc('get_top_selling_products', {
-        start_date: startDate.toISOString()
+        start_date: startDate.toISOString(),
+        user_id: user?.id
       });
 
       if (error) throw error;
