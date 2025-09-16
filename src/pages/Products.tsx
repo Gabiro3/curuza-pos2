@@ -7,7 +7,7 @@ import { z } from "zod"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 import type { Product } from "@/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -128,7 +128,6 @@ export default function ProductsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
 
-  const { toast } = useToast()
   const { user } = useAuth()
 
   const form = useForm<ProductFormValues>({
@@ -202,11 +201,7 @@ export default function ProductsPage() {
       setProducts(data || [])
     } catch (error) {
       console.error("Error fetching products:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch products. Please try again.",
-      })
+      toast.error("Failed to fetch products. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -250,21 +245,14 @@ export default function ProductsPage() {
         if (transactionError) throw transactionError
       }
 
-      toast({
-        title: "Success",
-        description: "Product added successfully",
-      })
+      toast.success("Product added successfully")
 
       form.reset()
       setDialogOpen(false)
       fetchProducts()
     } catch (error) {
       console.error("Error adding product:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add product. Please try again.",
-      })
+      toast.error("Failed to add product. Please try again.")
     }
   }
 
@@ -309,20 +297,13 @@ export default function ProductsPage() {
         if (transactionError) throw transactionError
       }
 
-      toast({
-        title: "Success",
-        description: "Product updated successfully",
-      })
+      toast.success("Product updated successfully")
 
       setEditDialogOpen(false)
       fetchProducts()
     } catch (error) {
       console.error("Error updating product:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update product. Please try again.",
-      })
+      toast.error("Failed to update product. Please try again.")
     }
   }
 
@@ -356,21 +337,14 @@ export default function ProductsPage() {
 
       if (transactionError) throw transactionError
 
-      toast({
-        title: "Success",
-        description: `Added ${quantity} units to ${refillProduct.name}`,
-      })
+      toast.success(`Added ${quantity} units to ${refillProduct.name}`);
 
       refillForm.reset()
       setRefillDialogOpen(false)
       fetchProducts()
     } catch (error) {
       console.error("Error refilling stock:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to refill stock. Please try again.",
-      })
+      toast.error("Failed to refill stock. Please try again.")
     }
   }
 
@@ -387,13 +361,9 @@ export default function ProductsPage() {
       if (saleError) throw saleError
 
       if (saleCount && saleCount > 0) {
-        toast({
-          variant: "destructive",
-          title: "Cannot Delete",
-          description: "This product has sales records and cannot be deleted.",
-        })
-        setDeleteDialogOpen(false)
-        return
+        toast.error("This product has sales records and cannot be deleted.");
+        setDeleteDialogOpen(false);
+        return;
       }
 
       // Delete inventory transactions first
@@ -409,20 +379,13 @@ export default function ProductsPage() {
 
       if (error) throw error
 
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      })
+      toast.success("Product deleted successfully");
 
-      setDeleteDialogOpen(false)
-      fetchProducts()
+      setDeleteDialogOpen(false);
+      fetchProducts();
     } catch (error) {
       console.error("Error deleting product:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete product. Please try again.",
-      })
+      toast.error("Failed to delete product. Please try again.");
     }
   }
 
@@ -610,6 +573,7 @@ export default function ProductsPage() {
                       <TableHead className="hidden md:table-cell">Purchase Price</TableHead>
                       <TableHead className="hidden lg:table-cell">Additional Costs</TableHead>
                       <TableHead>Stock</TableHead>
+                      <TableHead className="hidden md:table-cell">Inventory Total</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -653,6 +617,9 @@ export default function ProductsPage() {
                             ) : (
                               product.current_stock
                             )}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatCurrency(product.purchase_price * product.current_stock)}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>

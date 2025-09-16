@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from "@/lib/toast";
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -36,7 +36,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const form = useForm<FormValues>({
@@ -74,18 +73,11 @@ export default function Register() {
 
       if (userError) throw userError;
 
-      toast({
-        title: 'Account created',
-        description: 'Your account has been created successfully. Please log in.',
-      });
+      toast.success('Your account has been created successfully. Please log in.')
       navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Registration failed',
-        description: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
-      });
+      toast.error(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }

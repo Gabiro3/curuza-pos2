@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "@/lib/toast"
 import { supabase } from "@/lib/supabase"
 import type { DashboardStats, SalesByPeriod } from "@/types"
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -22,9 +22,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, ShoppingCart, ArrowUpCircle, ArrowDownCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function Dashboard() {
-  const { toast } = useToast()
   const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats>({
     total_sales: 0,
@@ -32,6 +32,8 @@ export default function Dashboard() {
     total_products: 0,
     low_stock_count: 0,
   })
+  const [lowStockDialogOpen, setLowStockDialogOpen] = useState(false);
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [chartData, setChartData] = useState<SalesByPeriod[]>([])
   const [period, setPeriod] = useState<"week" | "month">("week")
   const [loading, setLoading] = useState(true)
@@ -99,11 +101,7 @@ export default function Dashboard() {
         await fetchSalesByPeriod(period)
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch dashboard data. Please try again.",
-        })
+        toast.error("Failed to fetch dashboard data. Please try again.")
       } finally {
         setLoading(false)
       }
@@ -264,11 +262,26 @@ export default function Dashboard() {
       setPeriod(selectedPeriod);
     } catch (error) {
       console.error("Error fetching sales by period:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch sales chart data.",
-      });
+      toast.error("Failed to fetch sales chart data.");
+    }
+  };
+
+  const fetchLowStockProducts = async () => {
+    try {
+      // Fetch products with low stock (less than 10)
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('created_by', user?.id)
+        .lt('current_stock', 10)
+        .order('current_stock');
+
+      if (error) throw error;
+
+      setLowStockProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching low stock products:', error);
+      toast.error('Failed to fetch low stock products data.');
     }
   };
 
@@ -425,12 +438,53 @@ export default function Dashboard() {
     )
   }
 
+  function setRefillDialogOpen(arg0: boolean) {
+    throw new Error("Function not implemented.")
+  }
+
+  function setRefillProduct(product: any) {
+    throw new Error("Function not implemented.")
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">Overview of your business performance and key metrics</p>
       </div>
+      <Dialog open={lowStockDialogOpen} onOpenChange={setLowStockDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Low Stock Products</DialogTitle>
+            <DialogDescription>Review and refill products that are low on stock.</DialogDescription>
+          </DialogHeader>
+
+          {lowStockProducts.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No products currently low on stock.</p>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {lowStockProducts.map((product) => (
+                <div key={product.id} className="flex items-center justify-between border-b pb-2">
+                  <div>
+                    <p className="font-medium">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">Stock: {product.current_stock}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setRefillProduct(product);
+                      setRefillDialogOpen(true);
+                      setLowStockDialogOpen(false); // Optional: close the low stock list
+                    }}
+                  >
+                    Refill Stock
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Sales Card */}
@@ -482,7 +536,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Low Stock Card */}
-        <Card>
+        <Card onClick={() => {
+          fetchLowStockProducts(); // Make sure the latest data is fetched
+          setLowStockDialogOpen(true);
+        }} className="cursor-pointer hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock Alert</CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -645,6 +702,7 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
     </div>
   )
 }

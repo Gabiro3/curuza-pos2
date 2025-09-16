@@ -4,7 +4,7 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "@/lib/toast";
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +35,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -51,17 +50,11 @@ export default function LoginPage() {
     try {
       const { error } = await signIn(data.email, data.password);
       if (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Login failed',
-        });
+        toast.error("Login failed. Check credentials and try again.");
         return;
       }
 
-      toast({
-        title: 'Welcome back!',
-        description: 'You have been successfully logged in.',
-      });
+      toast.success('You have been successfully logged in.');
       navigate('/');
     } finally {
       setLoading(false);

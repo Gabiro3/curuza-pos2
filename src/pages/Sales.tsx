@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Product, Sale } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "@/lib/toast";
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -124,7 +124,6 @@ export default function SalesPage() {
   const [saleDetailsDialogOpen, setSaleDetailsDialogOpen] = useState(false);
   const itemsPerPage = 10;
 
-  const { toast } = useToast();
   const { user } = useAuth();
 
   const form = useForm<SaleFormValues>({
@@ -176,11 +175,7 @@ export default function SalesPage() {
       setSales(data || []);
     } catch (error) {
       console.error('Error fetching sales:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to fetch sales. Please try again.',
-      });
+      toast.error('Failed to fetch sales. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -199,11 +194,7 @@ export default function SalesPage() {
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to fetch products. Please try again.',
-      });
+      toast.error('Failed to fetch products. Please try again.');
     }
   };
 
@@ -231,17 +222,38 @@ export default function SalesPage() {
 
   const onSubmit = async (data: SaleFormValues) => {
     try {
-      // Calculate total amount
+      // ✅ Fetch current stock for all selected product IDs
+      const productIds = data.items.map(item => item.product_id);
+
+      const { data: products, error: stockFetchError } = await supabase
+        .from('products')
+        .select('id, name, current_stock')
+        .in('id', productIds);
+
+      if (stockFetchError) throw stockFetchError;
+
+      // ✅ Check if any item quantity exceeds current stock
+      for (const item of data.items) {
+        const product = products.find(p => p.id === item.product_id);
+        if (!product) {
+          throw new Error(`Product with ID ${item.product_id} not found.`);
+        }
+        if (item.quantity > product.current_stock) {
+          toast.error(`Cannot sell ${item.quantity} units of ${product.name}. Only ${product.current_stock} in stock.`);
+          return; // 🔴 Stop the submission
+        }
+      }
+
+      // ✅ Calculate totals
       const totalAmount = data.items.reduce((total, item) => {
         return total + calculateItemTotal(item.price, item.quantity, item.discount);
       }, 0);
 
-      // Calculate total discount
       const discountAmount = data.items.reduce((total, item) => {
         return total + (item.discount || 0);
       }, 0);
 
-      // Create sale record
+      // ✅ Create sale record
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert([{
@@ -259,13 +271,13 @@ export default function SalesPage() {
 
       if (saleError) throw saleError;
 
-      // Create sale items
+      // ✅ Insert sale items
       const saleItems = data.items.map(item => ({
         sale_id: saleData.id,
         product_id: item.product_id,
         quantity: item.quantity,
         price: item.price,
-        profit: item.profit || 0, // Assuming profit is part of the item
+        profit: item.profit || 0,
         discount: item.discount || 0,
       }));
 
@@ -275,9 +287,8 @@ export default function SalesPage() {
 
       if (itemsError) throw itemsError;
 
-      // Update product stock
+      // ✅ Record inventory transactions & decrease stock
       for (const item of data.items) {
-        // Create inventory transaction (stock out)
         const { error: transactionError } = await supabase
           .from('inventory_transactions')
           .insert([{
@@ -290,7 +301,6 @@ export default function SalesPage() {
 
         if (transactionError) throw transactionError;
 
-        // Update product stock
         const { error: stockError } = await supabase.rpc('decrease_stock', {
           p_id: item.product_id,
           p_quantity: item.quantity
@@ -299,10 +309,7 @@ export default function SalesPage() {
         if (stockError) throw stockError;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Sale recorded successfully',
-      });
+      toast.success('Sale recorded successfully');
 
       form.reset({
         customer_name: '',
@@ -317,13 +324,10 @@ export default function SalesPage() {
       fetchProducts();
     } catch (error) {
       console.error('Error recording sale:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to record sale. Please try again.',
-      });
+      toast.error('Failed to record sale. Please try again.');
     }
   };
+
 
   const filteredSales = searchTerm
     ? sales.filter(sale =>

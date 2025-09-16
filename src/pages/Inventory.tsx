@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import {
     Table,
     TableBody,
@@ -76,7 +76,6 @@ export default function InventoryPage() {
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const itemsPerPage = 15;
 
-    const { toast } = useToast();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -109,11 +108,7 @@ export default function InventoryPage() {
             setTransactions(data || []);
         } catch (error) {
             console.error('Error fetching inventory transactions:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to fetch inventory transactions. Please try again.',
-            });
+            toast.error('Failed to fetch inventory transactions. Please try again.');
         } finally {
             setLoading(false);
         }
