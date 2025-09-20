@@ -222,12 +222,12 @@ export default function SalesPage() {
 
   const onSubmit = async (data: SaleFormValues) => {
     try {
-      // ✅ Fetch current stock for all selected product IDs
+      // ✅ Fetch current stock for all selected product IDs along with purchase_price and additional_costs
       const productIds = data.items.map(item => item.product_id);
 
       const { data: products, error: stockFetchError } = await supabase
         .from('products')
-        .select('id, name, current_stock')
+        .select('id, name, current_stock, purchase_price, additional_costs')
         .in('id', productIds);
 
       if (stockFetchError) throw stockFetchError;
@@ -242,6 +242,10 @@ export default function SalesPage() {
           toast.error(`Cannot sell ${item.quantity} units of ${product.name}. Only ${product.current_stock} in stock.`);
           return; // 🔴 Stop the submission
         }
+
+        // ✅ Calculate profit for each item
+        const profit = item.price - (product.purchase_price + product.additional_costs + (item.discount || 0));
+        item.profit = profit; // Update the item with the calculated profit
       }
 
       // ✅ Calculate totals
@@ -271,7 +275,7 @@ export default function SalesPage() {
 
       if (saleError) throw saleError;
 
-      // ✅ Insert sale items
+      // ✅ Insert sale items with calculated profits
       const saleItems = data.items.map(item => ({
         sale_id: saleData.id,
         product_id: item.product_id,
@@ -327,6 +331,7 @@ export default function SalesPage() {
       toast.error('Failed to record sale. Please try again.');
     }
   };
+
 
 
   const filteredSales = searchTerm
@@ -524,25 +529,6 @@ export default function SalesPage() {
                           )}
                         />
 
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.profit`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Profit Amount</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min={0}
-                                  {...field}
-                                  onChange={e => field.onChange(parseFloat(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                       </div>
 
                       <div className="text-right text-sm font-medium">
